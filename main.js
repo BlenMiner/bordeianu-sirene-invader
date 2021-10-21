@@ -11,10 +11,15 @@ const FREE_INSTANCES = [];
 
 function UpdateWorkers(packet = null) {
     if (packet !== null) {
-        // worker finished something
-        FREE_INSTANCES.push(packet.data.PID);
-        const delay = performance.now() - WORK_IN_PROGRESS[packet.data.FILE];
-        console.log("Took " + delay + " ms for " + packet.data.FILE);
+        if (packet.data.READY) {
+            FREE_INSTANCES.push(packet.data.PID);
+            console.log("Machine ready: " + packet.data.PID);
+        } else {
+            // worker finished something
+            FREE_INSTANCES.push(packet.data.PID);
+            const delay = performance.now() - WORK_IN_PROGRESS[packet.data.FILE];
+            console.log("Took " + delay + " ms for " + packet.data.FILE);
+        }
     }
 
     if (QUEUED_WORK.length > 0 && FREE_INSTANCES.length > 0) {
@@ -37,7 +42,6 @@ function UpdateWorkers(packet = null) {
             pm2.sendDataToProcessId(PID, {
                 type : 'process:msg',
                 data : {
-                    PID: PID,
                     FILE: work
                 },
                 topic: "SIRENE-INVADER"
@@ -55,14 +59,8 @@ function StartCluster() {
         name    : `worker`,
         instances : "max",
         exec_mode : "cluster"
-    }, (err, proc) => {
+    }, (err, _) => {
         if (err) console.error(err);
-        else {
-            for (let i = 0; i < proc.length; ++i) {
-                FREE_INSTANCES.push(proc[i].pm_id);
-            }
-            UpdateWorkers();
-        }
     });
 }
 
@@ -98,8 +96,8 @@ function FilterHeaders(header) {
     return res;
 }
 
-function SaveCSV(buffer, start, end, savePath) {
-    fs.writeFileSync(savePath, buffer.slice(start, end));
+async function SaveCSV(buffer, start, end, savePath) {
+    await fs.promises.writeFile(savePath, buffer.slice(start, end));
     QUEUED_WORK.push(savePath);
     UpdateWorkers();
 }
@@ -122,7 +120,7 @@ function FindLastCharacter(character, buffer, bufferSize) {
     return -1;
 }
 
-function SplitCSV() {
+async function SplitCSV() {
     const splitSizeInMB = 30;
     const chunkSize = 1024 * 1024 * splitSizeInMB;
     const chunkBuffer = Buffer.alloc(chunkSize);
@@ -151,12 +149,12 @@ function SplitCSV() {
             filter = FilterHeaders(chunkBuffer.slice(0, streamStart++).toString());
         }
 
-        SaveCSV(chunkBuffer, streamStart, streamEnd, `./data/generated/CSV-${csvId++}.csv`);
+        await SaveCSV(chunkBuffer, streamStart, streamEnd, `./data/generated/CSV-${csvId++}.csv`);
 
-        if (csvId > 9) break; // FOR DEBUGGING
+        if (csvId > 50) break; // FOR DEBUGGING
     }
 
-    console.log("Done.");
+    console.log("Finished all " + csvId + " files.");
 }
 
 pm2.connect(function(err) {

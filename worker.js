@@ -1,23 +1,30 @@
-setInterval(() => {
-    console.log("alive");
-}, 10000);
-
 var WORKING_FILE = "";
-var MY_PID = -1;
 
 function MarkAsCompleted() {
     process.send({
         type : 'process:msg',
         data : {
             FILE : WORKING_FILE,
-            PID: MY_PID
+            PID: process.env.pm_id
         }
     });
 }
 
+function MarkAsReady() {
+    process.send({
+        type : 'process:msg',
+        data : {
+            READY: true,
+            PID: process.env.pm_id
+        }
+    });
+}
+
+MarkAsReady();
+
 process.on('message', function(packet) {
     WORKING_FILE = packet.data.FILE;
-    MY_PID = packet.data.PID;
 
+    console.log(WORKING_FILE);
     MarkAsCompleted();
 });

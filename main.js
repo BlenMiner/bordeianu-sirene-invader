@@ -54,14 +54,16 @@ function UpdateWorkers(packet = null) {
 }
 
 function StartCluster() {
-    pm2.start({
-        script  : 'worker.js',
-        name    : `worker`,
-        instances : "max",
-        exec_mode : "cluster"
-    }, (err, _) => {
-        if (err) console.error(err);
-    });
+    for (let i = 0; i < 4; ++i) {
+        pm2.start({
+            script  : 'worker.js',
+            name    : `worker${i}`,
+            instances : "max",
+            exec_mode : "cluster"
+        }, (err, _) => {
+            if (err) console.error(err);
+        });
+    }
 }
 
 function FilterHeaders(header) {

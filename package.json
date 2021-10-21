@@ -1,0 +1,17 @@
+{
+  "name": "bordeianu-sirene-invader",
+  "version": "0.1.0",
+  "description": "SIRENE Invader Project",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "run": "node main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Valentin BORDEIANU",
+  "license": "ISC",
+  "dependencies": {
+    "mongodb": "^4.1.3",
+    "pm2": "^5.1.2"
+  }
+}

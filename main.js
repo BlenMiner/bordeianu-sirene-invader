@@ -8,6 +8,7 @@ const PATH = './data/StockEtablissement_utf8.csv';
 const WORK_IN_PROGRESS = {};
 const QUEUED_WORK = [];
 const FREE_INSTANCES = [];
+var FILTER = [];
 
 function UpdateWorkers(packet = null) {
     if (packet !== null) {
@@ -22,7 +23,7 @@ function UpdateWorkers(packet = null) {
         }
     }
 
-    if (QUEUED_WORK.length > 0 && FREE_INSTANCES.length > 0) {
+    if (QUEUED_WORK.length > 0 && FREE_INSTANCES.length > 0 && FILTER.length >0) {
         let instanceReadyCount = Math.min(QUEUED_WORK.length, FREE_INSTANCES.length);
 
         for (let i = 0; i < instanceReadyCount; ++i) {
@@ -42,7 +43,8 @@ function UpdateWorkers(packet = null) {
             pm2.sendDataToProcessId(PID, {
                 type : 'process:msg',
                 data : {
-                    FILE: work
+                    FILE: work,
+                    FILTER: FILTER
                 },
                 topic: "SIRENE-INVADER"
             }
@@ -94,7 +96,7 @@ function FilterHeaders(header) {
         if (idx < 0) throw "Header not found: " + headers[i];
         res.push(idx);
     }
-    console.table(res);
+    
     return res;
 }
 
@@ -146,9 +148,9 @@ async function SplitCSV() {
         }
 
         // For the first pass, read the header & assign the filter
-        if (filter === null) {
+        if (FILTER.length == 0) {
             streamStart = FindFirstCharacter("\n", chunkBuffer, bytesRead);
-            filter = FilterHeaders(chunkBuffer.slice(0, streamStart++).toString());
+            FILTER = FilterHeaders(chunkBuffer.slice(0, streamStart++).toString());
         }
 
         await SaveCSV(chunkBuffer, streamStart, streamEnd, `./data/generated/CSV-${csvId++}.csv`);
@@ -156,7 +158,7 @@ async function SplitCSV() {
         if (csvId > 50) break; // FOR DEBUGGING
     }
 
-    console.log("Finished all " + csvId + " files.");
+    console.log("Finished splitting CSV into " + csvId + " files.");
 }
 
 pm2.connect(function(err) {

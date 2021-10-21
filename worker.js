@@ -1,3 +1,6 @@
+import fs from 'fs';
+import { csv_to_table } from './csv.js';
+
 var WORKING_FILE = "";
 
 function MarkAsCompleted() {
@@ -24,7 +27,10 @@ MarkAsReady();
 
 process.on('message', function(packet) {
     WORKING_FILE = packet.data.FILE;
+    const filter = packet.data.FILTER;
+    const csvStr = fs.readFileSync(WORKING_FILE);
 
-    console.log(WORKING_FILE);
-    MarkAsCompleted();
+    console.log(csv_to_table(csvStr));
+
+    setTimeout(MarkAsCompleted, 5000);
 });

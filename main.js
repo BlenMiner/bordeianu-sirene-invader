@@ -1,9 +1,10 @@
 import fs from 'fs';
+import { csv_to_table } from './csv.js'
 
 const PATH = './data/StockEtablissement_utf8.csv';
 
 function FilterHeaders(header) {
-    console.log(header);
+    console.log(csv_to_table(header));
     return [0];
 }
 

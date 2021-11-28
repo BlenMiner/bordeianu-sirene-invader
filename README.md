@@ -1,5 +1,19 @@
 # Sirene Invader
 
+Getting started:
+
+- Download data inside **data/StockEtablissement_utf8.csv**
+
+- Install dependencies
+```console
+npm install
+```
+
+- Execute program
+```console
+npm run run
+```
+
 How it works:
 
 - It looks for *data/StockEtablissement_utf8.csv* and splits the file into chunks of around 30 MB.

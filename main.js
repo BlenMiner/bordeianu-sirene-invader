@@ -147,6 +147,7 @@ const chunkSize = 1024 * 1024 * splitSizeInMB;
 const chunkBuffer = Buffer.alloc(chunkSize);
 
 async function SplitCSV() {
+    const splitStart = performance.now();
     let bytesRead = 0;
     let offset = 0;
     let csvId = 0;
@@ -177,7 +178,8 @@ async function SplitCSV() {
 
     
     FINISHED_SPLITTING = true;
-    console.log("Split CSV into " + csvId + " chunks of " + splitSizeInMB + "MB.");
+    let totalSeconds = (performance.now() - splitStart) / 1000;
+    console.log('\x1b[36m%s\x1b[0m', "Split CSV into " + csvId + " chunks of " + splitSizeInMB + "MB in " + totalSeconds + " seconds.");
     UpdateWorkers();
 }
 

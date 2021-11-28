@@ -8,22 +8,30 @@ const PATH = './data/StockEtablissement_utf8.csv';
 const WORK_IN_PROGRESS = {};
 const QUEUED_WORK = [];
 const FREE_INSTANCES = [];
-var FILTER = [];
+let TIMES_TOTAL = 0;
+let TIMES_COUNT = 0;
+let BUSY_INSTANCES = 0;
+let FINISHED_SPLITTING = false;
+var FILTER = undefined;
+const PROCESS_START = performance.now();
 
 function UpdateWorkers(packet = null) {
     if (packet !== null) {
         if (packet.data.READY) {
             FREE_INSTANCES.push(packet.data.PID);
-            console.log("Machine ready: " + packet.data.PID);
         } else {
-            // worker finished something
+            // worker finished working
             FREE_INSTANCES.push(packet.data.PID);
+            BUSY_INSTANCES -= 1;
+
             const delay = performance.now() - WORK_IN_PROGRESS[packet.data.FILE];
+            TIMES_TOTAL += delay;
+            TIMES_COUNT += 1;
             console.log("Took " + delay + " ms for " + packet.data.FILE);
         }
     }
 
-    if (QUEUED_WORK.length > 0 && FREE_INSTANCES.length > 0 && FILTER.length >0) {
+    if (QUEUED_WORK.length > 0 && FREE_INSTANCES.length > 0 && FILTER !== undefined) {
         let instanceReadyCount = Math.min(QUEUED_WORK.length, FREE_INSTANCES.length);
 
         for (let i = 0; i < instanceReadyCount; ++i) {
@@ -31,6 +39,7 @@ function UpdateWorkers(packet = null) {
 
             // Remove it from the FREE list
             FREE_INSTANCES.splice(i, 1);
+            BUSY_INSTANCES += 1;
             
             i -= 1;
             instanceReadyCount -= 1;
@@ -52,25 +61,34 @@ function UpdateWorkers(packet = null) {
                 if (error) console.error(error);
             });
         }
+    } 
+    else if (QUEUED_WORK.length == 0 && FINISHED_SPLITTING && BUSY_INSTANCES == 0)
+    {
+        console.log('\x1b[36m%s\x1b[0m', "Finished indexing ");
+
+        let totalMs = (performance.now() - PROCESS_START) / 1000;
+        let seconds = TIMES_TOTAL / 1000;
+
+        console.log('\x1b[36m%s\x1b[0m', "Total of " + totalMs + " seconds to finish.");
+        console.log('\x1b[36m%s\x1b[0m', "Total of " + seconds + " seconds on indexation.");
+        console.log('\x1b[36m%s\x1b[0m', "Average of " + (seconds / TIMES_COUNT) + " seconds per worker.");
     }
 }
 
 function StartCluster() {
-    for (let i = 0; i < 4; ++i) {
-        pm2.start({
-            script  : 'worker.js',
-            name    : `worker${i}`,
-            instances : "max",
-            exec_mode : "cluster"
-        }, (err, _) => {
-            if (err) console.error(err);
-        });
-    }
+    pm2.start({
+        script  : 'worker.js',
+        name    : `sirene-worker`,
+        instances : "max",
+        exec_mode : "cluster"
+    }, (err, _) => {
+        if (err) console.error(err);
+    });
 }
 
 function FilterHeaders(header) {
     let csv = csv_to_table(header);
-    let res = [];
+    let res = {};
 
     if (csv.length != 1) throw "Header doesn't exist.";
 
@@ -94,7 +112,7 @@ function FilterHeaders(header) {
     for (let i = 0; i < headers.length; ++i) {
         let idx = table_header.indexOf(headers[i]);
         if (idx < 0) throw "Header not found: " + headers[i];
-        res.push(idx);
+        res[headers[i]] = idx;
     }
     
     return res;
@@ -124,15 +142,14 @@ function FindLastCharacter(character, buffer, bufferSize) {
     return -1;
 }
 
-async function SplitCSV() {
-    const splitSizeInMB = 30;
-    const chunkSize = 1024 * 1024 * splitSizeInMB;
-    const chunkBuffer = Buffer.alloc(chunkSize);
+const splitSizeInMB = 30;
+const chunkSize = 1024 * 1024 * splitSizeInMB;
+const chunkBuffer = Buffer.alloc(chunkSize);
 
+async function SplitCSV() {
     let bytesRead = 0;
     let offset = 0;
     let csvId = 0;
-    let filter = null;
 
     const fp = fs.openSync(PATH, 'r');
 
@@ -148,26 +165,29 @@ async function SplitCSV() {
         }
 
         // For the first pass, read the header & assign the filter
-        if (FILTER.length == 0) {
+        if (FILTER === undefined) {
             streamStart = FindFirstCharacter("\n", chunkBuffer, bytesRead);
             FILTER = FilterHeaders(chunkBuffer.slice(0, streamStart++).toString());
         }
 
         await SaveCSV(chunkBuffer, streamStart, streamEnd, `./data/generated/CSV-${csvId++}.csv`);
 
-        if (csvId > 50) break; // FOR DEBUGGING
+        UpdateWorkers();
     }
 
-    console.log("Finished splitting CSV into " + csvId + " files.");
+    
+    FINISHED_SPLITTING = true;
+    console.log("Split CSV into " + csvId + " chunks of " + splitSizeInMB + "MB.");
+    UpdateWorkers();
 }
 
-pm2.connect(function(err) {
+pm2.connect(async function(err) {
     if (err) {
       console.error(err)
       process.exit(2)
     }
 
-    pm2.launchBus(function(err, pm2_bus) {
+    pm2.launchBus(function(_err, pm2_bus) {
         pm2_bus.on('process:msg', function(packet) {
             UpdateWorkers(packet);
         })
@@ -175,8 +195,14 @@ pm2.connect(function(err) {
 
     try {
         if (fs.existsSync(PATH)) {
+            console.log("Starting clusters...");
+
             StartCluster();
-            SplitCSV();
+
+            console.log("Starting to split CSV...");
+
+            await SplitCSV();
+
         } else {
             console.error(`File doesn't exist: ${PATH}`);
         }

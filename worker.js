@@ -5,8 +5,8 @@ import { MongoClient } from 'mongodb';
 var WORKING_FILE = "";
 const PASSWORD = "epita";
 
-const dbUri = `mongodb://127.0.0.1:27017/?retryWrites=true&w=majority`;
-//const dbUri = `mongodb+srv://epita:${PASSWORD}@cluster0.5owox.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
+//const dbUri = `mongodb://127.0.0.1:27017/?retryWrites=true&w=majority`;
+const dbUri = `mongodb+srv://epita:${PASSWORD}@cluster0.5owox.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const mongoClient = new MongoClient(dbUri, { useNewUrlParser: true, useUnifiedTopology: true , keepAlive: 1});
 
 mongoClient.connect(err => {

@@ -2,7 +2,7 @@
 
 How it works:
 
-- It looks for data/StockEtablissement_utf8.csv and splits the file into chunks of around 30 MB.
+- It looks for *data/StockEtablissement_utf8.csv* and splits the file into chunks of around 30 MB.
 - It creates parallel workers based on the CPU count to process each chunk.
 - It uploads each chunk to the database based on the filter object.
 - Once everything is done, it prints some analytics.

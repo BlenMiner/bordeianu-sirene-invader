@@ -24,3 +24,6 @@ Benchmark:
 
 Successful run:
 ![](https://i.ibb.co/JsJm0FM/sirene.png)
+
+MongoDB after run:
+![](https://i.ibb.co/Lp1R9Yj/databasemongo.png)

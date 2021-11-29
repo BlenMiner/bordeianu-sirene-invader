@@ -27,7 +27,7 @@ The paralel workers are a separate process that communicates via signals with th
 The first thing it does is notify the main process that it is ready for work (after connection to the MongoDB database).
 The main process has a list of available workers and a list of queued work.
 Once work is available and there is at least a free worker, a worker will be set as busy and the queued work will be removed and processed by the said worker.
-Once the worker finished another signal is sent notifying the main process which it then calculated the times it took to finish and sets it as free again.
+Once the worker has finished, another signal is sent notifying the main process, it then calculates the times it took to finish and marksthe worker as free again.
 This process keeps happening until no more work is available.
 
 Benchmark:
